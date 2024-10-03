@@ -16,7 +16,6 @@ import time
 load_dotenv()
 genai.configure(api_key=os.getenv("AIzaSyCtyGp4yXkmsy06LmyXDUh6dpcnxO00bsc"))
 
-
 # Function to read PDF file
 def read_pdf(pdf):
     text = ""
@@ -26,13 +25,11 @@ def read_pdf(pdf):
             text += page.extract_text()
     return text
 
-
-# Document Chunking (limit chunks to speed up)
+# Document Chunking with larger chunks
 def get_chunks(text, max_chunks=20):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=5000, chunk_overlap=500)  # Increased chunk size
     chunks = text_splitter.split_text(text)
     return chunks[:max_chunks]  # Limit the number of chunks
-
 
 # Create Embedding Store with progress bar
 def get_vector_store(text_chunks):
@@ -41,12 +38,14 @@ def get_vector_store(text_chunks):
     vector_store = FAISS()
 
     for i, chunk in enumerate(text_chunks):
+        start_time = time.time()
         vector_store.add_text([chunk], embedding=embeddings)
+        elapsed_time = time.time() - start_time
+        st.write(f"Processed chunk {i+1}/{len(text_chunks)} in {elapsed_time:.2f} seconds.")
         progress_bar.progress((i + 1) / len(text_chunks))  # Update progress bar
 
     vector_store.save_local("faiss_index")
     return vector_store
-
 
 # Create Conversation Chain
 def get_conversation_chain_pdf():
@@ -63,7 +62,6 @@ def get_conversation_chain_pdf():
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
     return chain
 
-
 # Processing User Input
 def user_input(user_query):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
@@ -72,7 +70,6 @@ def user_input(user_query):
     chain = get_conversation_chain_pdf()
     response = chain.run(input_documents=docs, question=user_query)
     st.write(response)
-
 
 def main():
     st.header("Welcome to Mind and Muscle, Ask Anything")
@@ -103,7 +100,6 @@ def main():
     user_query = st.text_input("Drop your Question")
     if user_query:
         user_input(user_query)
-
 
 if __name__ == "__main__":
     main()
