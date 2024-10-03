@@ -1,7 +1,7 @@
 import streamlit as st
-from PyPDF2 import PdfReader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+import pdfplumber
 import os
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -10,40 +10,32 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 from io import BytesIO
-import time
 
 # Load the API Key
 load_dotenv()
 genai.configure(api_key=os.getenv("AIzaSyCtyGp4yXkmsy06LmyXDUh6dpcnxO00bsc"))
 
-# Function to read PDF file
+# Function to read PDF file using pdfplumber
 def read_pdf(pdf):
     text = ""
     for file in pdf:
-        pdf_reader = PdfReader(file)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
+        with pdfplumber.open(file) as pdf_reader:
+            for page in pdf_reader.pages:
+                text += page.extract_text() or ''  # Handle cases where text extraction might fail
     return text
 
-# Document Chunking with larger chunks
-def get_chunks(text, max_chunks=20):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=5000, chunk_overlap=500)  # Increased chunk size
+# Document Chunking
+def get_chunks(text):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=200, chunk_overlap=50)  # Adjust chunk size for small PDFs
     chunks = text_splitter.split_text(text)
-    return chunks[:max_chunks]  # Limit the number of chunks
+    return chunks  # No limit on chunks for a single line
 
-# Create Embedding Store with progress bar
+# Create Embedding Store
 def get_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    progress_bar = st.progress(0)
     vector_store = FAISS()
-
-    for i, chunk in enumerate(text_chunks):
-        start_time = time.time()
+    for chunk in text_chunks:
         vector_store.add_text([chunk], embedding=embeddings)
-        elapsed_time = time.time() - start_time
-        st.write(f"Processed chunk {i+1}/{len(text_chunks)} in {elapsed_time:.2f} seconds.")
-        progress_bar.progress((i + 1) / len(text_chunks))  # Update progress bar
-
     vector_store.save_local("faiss_index")
     return vector_store
 
@@ -84,15 +76,13 @@ def main():
             pdf_file.name = os.path.basename(pdf_file_path)  # Set a name for the file
 
             # Read and process the PDF
-            start_time = time.time()
             raw_text = read_pdf([pdf_file])
+            st.write(f"Raw text extracted: {raw_text}")  # Display the extracted text for verification
             text_chunks = get_chunks(raw_text)
-            st.write(f"PDF reading and chunking completed in {time.time() - start_time:.2f} seconds")
 
             # Create embeddings and store in FAISS
-            start_time = time.time()
             get_vector_store(text_chunks)
-            st.write(f"Embeddings and FAISS index creation took {time.time() - start_time:.2f} seconds")
+            st.write("Embeddings and FAISS index creation completed.")
     else:
         st.write("FAISS index already exists, skipping embedding generation.")
 
