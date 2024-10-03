@@ -16,29 +16,37 @@ import time
 load_dotenv()
 genai.configure(api_key=os.getenv("AIzaSyCtyGp4yXkmsy06LmyXDUh6dpcnxO00bsc"))
 
-# Function to read and chunk PDF file (with caching)
-@st.cache_data
-def read_and_chunk_pdf(file_path):
-    with open(file_path, 'rb') as f:
-        pdf_file = BytesIO(f.read())
-        pdf_reader = PdfReader(pdf_file)
-        text = "".join([page.extract_text() for page in pdf_reader.pages])
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
-        return text_splitter.split_text(text)
 
-# Create Embedding Store (cached)
-@st.cache_resource
+# Function to read PDF file
+def read_pdf(pdf):
+    text = ""
+    for file in pdf:
+        pdf_reader = PdfReader(file)
+        for page in pdf_reader.pages:
+            text += page.extract_text()
+    return text
+
+
+# Document Chunking (limit chunks to speed up)
+def get_chunks(text, max_chunks=20):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
+    chunks = text_splitter.split_text(text)
+    return chunks[:max_chunks]  # Limit the number of chunks
+
+
+# Create Embedding Store with progress bar
 def get_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+    progress_bar = st.progress(0)
+    vector_store = FAISS()
+
+    for i, chunk in enumerate(text_chunks):
+        vector_store.add_text([chunk], embedding=embeddings)
+        progress_bar.progress((i + 1) / len(text_chunks))  # Update progress bar
+
     vector_store.save_local("faiss_index")
     return vector_store
 
-# Load vector store (cached)
-@st.cache_resource
-def load_vector_store():
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    return FAISS.load_local("faiss_index", embeddings)
 
 # Create Conversation Chain
 def get_conversation_chain_pdf():
@@ -55,27 +63,47 @@ def get_conversation_chain_pdf():
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
     return chain
 
+
 # Processing User Input
 def user_input(user_query):
-    vector_store = load_vector_store()  # Load cached vector store
-    docs = vector_store.similarity_search(user_query)
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    load_vector_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+    docs = load_vector_db.similarity_search(user_query)
     chain = get_conversation_chain_pdf()
     response = chain.run(input_documents=docs, question=user_query)
     st.write(response)
 
-# Main function
+
 def main():
     st.header("Welcome to Mind and Muscle, Ask Anything")
 
+    # Example: Load a PDF file programmatically
     pdf_file_path = './Welcome to Mind and Muscle.pdf'
-    text_chunks = read_and_chunk_pdf(pdf_file_path)  # Cached text processing
-    get_vector_store(text_chunks)  # Preprocess embeddings (cached)
 
+    # Check if FAISS index already exists to skip embedding
+    if not os.path.exists("faiss_index"):
+        with open(pdf_file_path, 'rb') as f:
+            pdf_file = BytesIO(f.read())
+            pdf_file.name = os.path.basename(pdf_file_path)  # Set a name for the file
+
+            # Read and process the PDF
+            start_time = time.time()
+            raw_text = read_pdf([pdf_file])
+            text_chunks = get_chunks(raw_text)
+            st.write(f"PDF reading and chunking completed in {time.time() - start_time:.2f} seconds")
+
+            # Create embeddings and store in FAISS
+            start_time = time.time()
+            get_vector_store(text_chunks)
+            st.write(f"Embeddings and FAISS index creation took {time.time() - start_time:.2f} seconds")
+    else:
+        st.write("FAISS index already exists, skipping embedding generation.")
+
+    # User input for query
     user_query = st.text_input("Drop your Question")
     if user_query:
-        start_time = time.time()
         user_input(user_query)
-        st.write(f"Response time: {time.time() - start_time} seconds")
+
 
 if __name__ == "__main__":
     main()
