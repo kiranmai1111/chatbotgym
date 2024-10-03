@@ -7,3 +7,4 @@ langchain-community
 python-dotenv
 faiss-cpu
 boto3
+pdfplumber
