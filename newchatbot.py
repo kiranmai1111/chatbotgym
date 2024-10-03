@@ -16,9 +16,6 @@ import time
 load_dotenv()
 genai.configure(api_key=os.getenv("AIzaSyCtyGp4yXkmsy06LmyXDUh6dpcnxO00bsc"))
 
-# Small test text to simulate faster processing
-def small_test_text():
-    return "This is a small test document to simulate a quick response for embeddings and FAISS index creation."
 
 # Function to read PDF file
 def read_pdf(pdf):
@@ -29,27 +26,27 @@ def read_pdf(pdf):
             text += page.extract_text()
     return text
 
-# Document Chunking with aggressive limits for faster testing
-def get_chunks(text, max_chunks=5):  # Limit to 5 chunks for fast processing
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+
+# Document Chunking (limit chunks to speed up)
+def get_chunks(text, max_chunks=20):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
     chunks = text_splitter.split_text(text)
     return chunks[:max_chunks]  # Limit the number of chunks
 
-# Create Embedding Store with detailed logging and progress bar
+
+# Create Embedding Store with progress bar
 def get_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     progress_bar = st.progress(0)
     vector_store = FAISS()
 
     for i, chunk in enumerate(text_chunks):
-        st.write(f"Processing chunk {i+1}/{len(text_chunks)}...")  # Log which chunk is being processed
         vector_store.add_text([chunk], embedding=embeddings)
         progress_bar.progress((i + 1) / len(text_chunks))  # Update progress bar
-    
-    st.write("Saving FAISS index...")
+
     vector_store.save_local("faiss_index")
-    st.write("FAISS index saved.")
     return vector_store
+
 
 # Create Conversation Chain
 def get_conversation_chain_pdf():
@@ -66,6 +63,7 @@ def get_conversation_chain_pdf():
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
     return chain
 
+
 # Processing User Input
 def user_input(user_query):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
@@ -75,18 +73,29 @@ def user_input(user_query):
     response = chain.run(input_documents=docs, question=user_query)
     st.write(response)
 
+
 def main():
     st.header("Welcome to Mind and Muscle, Ask Anything")
 
-    # Use small text instead of large PDF for faster initial testing
-    raw_text = small_test_text()  # This will simulate a smaller input
-    text_chunks = get_chunks(raw_text)  # Chunk the text (limited to 5 chunks)
+    # Example: Load a PDF file programmatically
+    pdf_file_path = './Welcome to Mind and Muscle.pdf'
 
-    # Create embeddings and store in FAISS
+    # Check if FAISS index already exists to skip embedding
     if not os.path.exists("faiss_index"):
-        start_time = time.time()
-        get_vector_store(text_chunks)  # Generate vector store and save FAISS index
-        st.write(f"Embeddings and FAISS index creation took {time.time() - start_time:.2f} seconds")
+        with open(pdf_file_path, 'rb') as f:
+            pdf_file = BytesIO(f.read())
+            pdf_file.name = os.path.basename(pdf_file_path)  # Set a name for the file
+
+            # Read and process the PDF
+            start_time = time.time()
+            raw_text = read_pdf([pdf_file])
+            text_chunks = get_chunks(raw_text)
+            st.write(f"PDF reading and chunking completed in {time.time() - start_time:.2f} seconds")
+
+            # Create embeddings and store in FAISS
+            start_time = time.time()
+            get_vector_store(text_chunks)
+            st.write(f"Embeddings and FAISS index creation took {time.time() - start_time:.2f} seconds")
     else:
         st.write("FAISS index already exists, skipping embedding generation.")
 
@@ -94,6 +103,7 @@ def main():
     user_query = st.text_input("Drop your Question")
     if user_query:
         user_input(user_query)
+
 
 if __name__ == "__main__":
     main()
