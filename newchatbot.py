@@ -78,7 +78,7 @@ def main():
     st.header("Welcome to Mind and Muscle, Ask Anything")
 
     # Example: Load a PDF file programmatically
-    pdf_file_path = './Welcome to Mind and Muscle.pdf'
+    pdf_file_path = './kiranmai.pdf'
 
     # Check if FAISS index already exists to skip embedding
     if not os.path.exists("faiss_index"):
