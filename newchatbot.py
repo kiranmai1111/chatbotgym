@@ -36,6 +36,7 @@ def get_chunks(text):
 
 # Create Embedding Store
 def get_vector_store(text_chunks):
+    st.write("start")
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     st.write("embed")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
