@@ -84,11 +84,12 @@ def main():
         pdf_file.name = os.path.basename(pdf_file_path)  # Set a name for the file
 
         raw_text = read_pdf([pdf_file])  # Read the PDF file
+        # Display PDF content
+        st.subheader("Content of the PDF:")
+        st.text_area("PDF Content", raw_text, height=300) 
         text_chunks = get_chunks(raw_text)  # Chunk the text
         get_vector_store(text_chunks)  # Store embeddings
-    # Display PDF content
-    st.subheader("Content of the PDF:")
-    st.text_area("PDF Content", raw_text, height=300)    
+       
 
     user_query = st.text_input("Drop your Question")
     if user_query:
