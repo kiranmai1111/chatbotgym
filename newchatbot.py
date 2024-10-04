@@ -66,6 +66,10 @@ def user_input(user_query):
     chain = get_conversation_chain_pdf()
     response = chain.run(input_documents=docs, question=user_query)
     st.write(response)
+def image_to_base64(image_path):
+    """Convert an image file to a base64 string."""
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode('utf-8')    
 
 
 
@@ -74,6 +78,19 @@ def user_input(user_query):
 def main():
     # Set up the main UI
     st.header("Welcome to Mind and Muscle, Ask Anything")
+    bg_image_path = './bgchat.jpeg'
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url(data:image/png;base64,{image_to_base64(bg_image_path)});
+            background-size: cover;
+            background-position: center;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
  
     # Example: Load a PDF file programmatically
