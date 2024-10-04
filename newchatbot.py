@@ -36,25 +36,9 @@ def get_chunks(text):
 
 # Create Embedding Store
 def get_vector_store(text_chunks):
-    st.write("Starting vector store creation...")
-    
-    # Optimize chunk size if needed
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    st.write("Embeddings created.")
-
-    # Check how many chunks are being processed
-    st.write(f"Number of chunks: {len(text_chunks)}")
-    
-    try:
-        vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-        st.write("Vector store created successfully.")
-        
-        # Save the vector store
-        vector_store.save_local("faiss_index")
-        st.write("Vector store saved successfully.")
-    except Exception as e:
-        st.write(f"Error creating vector store: {e}")
-
+    vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+    vector_store.save_local("faiss_index")
     return vector_store
 
 
@@ -93,19 +77,15 @@ def main():
 
  
     # Example: Load a PDF file programmatically
-    pdf_file_path = './kiranmai.pdf'
+    pdf_file_path = './Welcome to Mind and Muscle.pdf'
 
     with open(pdf_file_path, 'rb') as f:
         pdf_file = BytesIO(f.read())
         pdf_file.name = os.path.basename(pdf_file_path)  # Set a name for the file
 
         raw_text = read_pdf([pdf_file])  # Read the PDF file
-        # Display PDF content
-        st.subheader("Content of the PDF:")
-        st.text_area("PDF Content", raw_text, height=300) 
         text_chunks = get_chunks(raw_text)  # Chunk the text
-        st.write("Hello")
-        st.write(text_chunks)
+    
         get_vector_store(text_chunks)  # Store embeddings
         
        
