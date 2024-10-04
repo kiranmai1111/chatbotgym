@@ -14,7 +14,7 @@ import base64
 
 # Load the API Key
 load_dotenv()
-genai.configure(api_key=os.getenv("AIzaSyCtyGp4yXkmsy06LmyXDUh6dpcnxO00bsc"))
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 # Function to read PDF file
