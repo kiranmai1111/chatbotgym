@@ -88,6 +88,7 @@ def main():
         st.subheader("Content of the PDF:")
         st.text_area("PDF Content", raw_text, height=300) 
         text_chunks = get_chunks(raw_text)  # Chunk the text
+        st.write("Hello")
         get_vector_store(text_chunks)  # Store embeddings
        
 
