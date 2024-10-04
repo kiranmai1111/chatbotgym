@@ -36,13 +36,25 @@ def get_chunks(text):
 
 # Create Embedding Store
 def get_vector_store(text_chunks):
-    st.write("start")
+    st.write("Starting vector store creation...")
+    
+    # Optimize chunk size if needed
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    st.write("embed")
-    vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    st.write("vs")
-    vector_store.save_local("faiss_index")
-    st.write("faiss")
+    st.write("Embeddings created.")
+
+    # Check how many chunks are being processed
+    st.write(f"Number of chunks: {len(text_chunks)}")
+    
+    try:
+        vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+        st.write("Vector store created successfully.")
+        
+        # Save the vector store
+        vector_store.save_local("faiss_index")
+        st.write("Vector store saved successfully.")
+    except Exception as e:
+        st.write(f"Error creating vector store: {e}")
+
     return vector_store
 
 
