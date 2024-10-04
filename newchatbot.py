@@ -90,6 +90,7 @@ def main():
         text_chunks = get_chunks(raw_text)  # Chunk the text
         st.write("Hello")
         get_vector_store(text_chunks)  # Store embeddings
+        st.write("heylloo")
        
 
     user_query = st.text_input("Drop your Question")
